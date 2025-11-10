@@ -34,12 +34,12 @@ public final class PlaywrightSession implements AutoCloseable {
                       Browser browser,
                       BrowserContext context,
                       Page page) {
-        this.testId = testId;
-        this.config = config;
+        this.testId = testId; // пригодится при генерации имён файлов с артефактами
+        this.config = config; // храним ссылку, чтобы страницы знали настройки
         this.playwright = playwright;
         this.browser = browser;
-        this.context = context;
-        this.page = page;
+        this.context = context; // каждый тест работает в своём браузерном контексте
+        this.page = page; // готовая вкладка, с которой взаимодействуют Page Object'ы
     }
 
     public String testId() {
@@ -72,7 +72,7 @@ public final class PlaywrightSession implements AutoCloseable {
         if (!config.traceEnabled() || !tracingStarted) {
             return Optional.empty();
         }
-        Path tracePath = FileSystemSupport.buildArtifactPath(config.traceDir(), testId + "-trace-" + Instant.now().toEpochMilli(), ".zip");
+        Path tracePath = FileSystemSupport.buildArtifactPath(config.traceDir(), testId + "-trace-" + Instant.now().toEpochMilli(), ".zip"); // имя файла завязано на тест
         context.tracing().stop(new Tracing.StopOptions().setPath(tracePath));
         tracingStarted = false;
         return Optional.of(tracePath);
@@ -86,7 +86,7 @@ public final class PlaywrightSession implements AutoCloseable {
     }
 
     public byte[] captureScreenshot() {
-        return page.screenshot(new Page.ScreenshotOptions().setFullPage(true));
+        return page.screenshot(new Page.ScreenshotOptions().setFullPage(true)); // fullPage удобно для аналитики багов
     }
 
     public Path persistScreenshot(byte[] screenshotBytes, String suffix) {
@@ -104,8 +104,8 @@ public final class PlaywrightSession implements AutoCloseable {
     }
 
     public Optional<Path> closeAndCollectVideo(boolean persist, String suffix) {
-        Video video = page.video();
-        page.close();
+        Video video = page.video(); // Playwright возвращает объект записи, если видео включено
+        page.close(); // закрываем вкладку перед сбором артефактов
         if (video != null && config.videoEnabled()) {
             if (!persist) {
                 video.delete();

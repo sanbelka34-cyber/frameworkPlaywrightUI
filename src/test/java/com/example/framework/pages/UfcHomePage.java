@@ -19,7 +19,7 @@ public class UfcHomePage extends BasePage<UfcHomePage> {
     private static final String SUGGESTION_ITEMS = "li.yxt-AutoComplete-option--item";
 
     public UfcHomePage(Page page, FrameworkConfig config) {
-        super(page, config);
+        super(page, config); // пробрасываем Playwright Page и настройки в базовый конструктор
     }
 
     @Override
@@ -29,48 +29,48 @@ public class UfcHomePage extends BasePage<UfcHomePage> {
 
     @Step("Open UFC home page")
     public UfcHomePage open() {
-        page.navigate(UFC_HOME_URL, new NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+        page.navigate(UFC_HOME_URL, new NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)); // ждём, пока основное содержимое загрузится
         return this;
     }
 
     @Step("Toggle the search panel")
     public UfcHomePage openSearchPanel() {
-        page.click(SEARCH_TOGGLE);
+        page.click(SEARCH_TOGGLE); // раскрываем скрытую панель поиска
         return this;
     }
 
     @Step("Focus the search input")
     public UfcHomePage focusSearchInput() {
         Locator input = page.locator(SEARCH_INPUT);
-        input.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-        input.click();
+        input.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE)); // дожидаемся появления поля
+        input.click(); // и ставим в него фокус
         return this;
     }
 
     @Step("Select the first suggestion")
-    public UfcHomePage selectFirstSuggestion() {
+    public UfcSearchPage selectFirstSuggestion() {
         waitForSuggestions();
-        Locator first = suggestions().first();
+        Locator first = suggestions().first(); // Playwright возвращает все подходящие элементы
         first.click();
-        page.waitForTimeout(1000);
-        return this;
+        page.waitForTimeout(1000); // даём сайту время обновить результаты
+        return new UfcSearchPage(page, config);
     }
 
     @Step("Select the last suggestion")
     public UfcHomePage selectLastSuggestion() {
         waitForSuggestions();
-        Locator last = suggestions().last();
+        Locator last = suggestions().last(); // выбираем другой элемент, чтобы убедиться, что список реагирует
         last.click();
         page.waitForTimeout(1000);
         return this;
     }
 
     private void waitForSuggestions() {
-        suggestions().first().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+        suggestions().first().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE)); // ждём, пока появятся подсказки
     }
 
     private Locator suggestions() {
-        return page.locator(SUGGESTION_ITEMS);
+        return page.locator(SUGGESTION_ITEMS); // селектор для всех элементов подсказок
     }
 }
 

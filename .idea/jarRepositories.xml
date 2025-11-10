@@ -4,7 +4,17 @@
     <remote-repository>
       <option name="id" value="central" />
       <option name="name" value="Central Repository" />
+      <option name="url" value="https://repo1.maven.org/maven2" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="central" />
+      <option name="name" value="Central Repository" />
       <option name="url" value="https://repo.maven.apache.org/maven2" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="ahrepo-digital-maven-snapshots" />
+      <option name="name" value="AH Digital Snapshots Repository" />
+      <option name="url" value="https://ahrepo.digital.achrf.ru/repository/digital-maven-snapshots/" />
     </remote-repository>
     <remote-repository>
       <option name="id" value="central" />
@@ -15,6 +25,11 @@
       <option name="id" value="jboss.community" />
       <option name="name" value="JBoss Community repository" />
       <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="ahrepo-digital-maven-releases" />
+      <option name="name" value="AH Digital Releases Repository" />
+      <option name="url" value="https://ahrepo.digital.achrf.ru/repository/digital-maven-release/" />
     </remote-repository>
   </component>
 </project>

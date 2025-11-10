@@ -4,6 +4,8 @@ import com.example.framework.core.PlaywrightFactory;
 import com.example.framework.core.PlaywrightSession;
 import com.example.framework.core.support.FileSystemSupport;
 import com.example.framework.tags.annotations.Flaky;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.WaitUntilState;
 import io.qameta.allure.Allure;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -27,14 +29,14 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(PlaywrightExtension.class);
     @Override
     public void beforeEach(ExtensionContext context) {
-        String testId = FileSystemSupport.sanitizeFileName(context.getUniqueId());
-        PlaywrightSession session = PlaywrightFactory.newSession(testId);
-        session.startTracingIfEnabled();
-        context.getStore(NAMESPACE).put(sessionKey(context), session);
-        context.getStore(NAMESPACE).put(artifactsKey(context), new Artifacts());
+        String testId = FileSystemSupport.sanitizeFileName(context.getUniqueId()); // создаём аккуратный идентификатор, чтобы назвать файлы
+        PlaywrightSession session = PlaywrightFactory.newSession(testId); // одна сессия на тест
+        session.startTracingIfEnabled(); // сразу включаем трейс, если это разрешено конфигом
+        context.getStore(NAMESPACE).put(sessionKey(context), session); // кладём сессию в стор, чтобы доставать позже
+        context.getStore(NAMESPACE).put(artifactsKey(context), new Artifacts()); // структура для будущих вложений Allure
 
         // Automatically navigate to base URL to make tests more declarative.
-        session.page().navigate(session.config().baseUrl());
+        session.page().navigate(session.config().baseUrl(), new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)); // заранее открываем базовый адрес, чтобы тесты были лаконичнее
     }
 
     @Override
@@ -45,14 +47,14 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
         }
 
         Artifacts artifacts = getArtifacts(context);
-        Optional<Path> videoPath = session.closeAndCollectVideo(artifacts.failed, artifacts.failed ? "failure" : "success");
+        Optional<Path> videoPath = session.closeAndCollectVideo(artifacts.failed, artifacts.failed ? "failure" : "success"); // при успехе видео можно удалять
 
         if (artifacts.failed) {
-            videoPath.ifPresent(path -> attachFile("Failure video", "video/webm", ".webm", path));
+            videoPath.ifPresent(path -> attachFile("Failure video", "video/webm", ".webm", path)); // прикладываем видео только когда упало
         }
 
-        session.close();
-        context.getStore(NAMESPACE).remove(sessionKey(context));
+        session.close(); // закрываем контекст, браузер и Playwright
+        context.getStore(NAMESPACE).remove(sessionKey(context)); // чистим стор, чтобы не было утечек
         context.getStore(NAMESPACE).remove(artifactsKey(context));
     }
 
@@ -60,8 +62,8 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
         Class<?> type = parameterContext.getParameter().getType();
         return type.equals(PlaywrightSession.class)
-                || type.equals(com.microsoft.playwright.Page.class)
-                || type.equals(com.microsoft.playwright.BrowserContext.class);
+                || type.equals(com.microsoft.playwright.Page.class) // можно просить напрямую Playwright `Page`
+                || type.equals(com.microsoft.playwright.BrowserContext.class); // или `BrowserContext`
     }
 
     @Override
@@ -72,10 +74,10 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
             return session;
         }
         if (type.equals(com.microsoft.playwright.Page.class)) {
-            return session.page();
+            return session.page(); // прокидываем текущую вкладку
         }
         if (type.equals(com.microsoft.playwright.BrowserContext.class)) {
-            return session.context();
+            return session.context(); // или весь контекст, если нужно несколько вкладок
         }
         throw new IllegalStateException("Unsupported parameter type: " + type);
     }
@@ -104,16 +106,16 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
             return;
         }
         Artifacts artifacts = getArtifacts(context);
-        artifacts.failed = true;
+        artifacts.failed = true; // позже afterEach поймёт, что надо сохранять видео
 
-        byte[] screenshot = session.captureScreenshot();
-        Path storedScreenshot = session.persistScreenshot(screenshot, "failure");
-        Allure.addAttachment("Failure screenshot", "image/png", new ByteArrayInputStream(screenshot), ".png");
+        byte[] screenshot = session.captureScreenshot(); // делаем full-page скриншот
+        Path storedScreenshot = session.persistScreenshot(screenshot, "failure"); // сохраняем на диск с понятным именем
+        Allure.addAttachment("Failure screenshot", "image/png", new ByteArrayInputStream(screenshot), ".png"); // добавляем в отчёт Allure
         artifacts.screenshotPath = storedScreenshot;
 
         session.exportTraceIfEnabled().ifPresent(path -> {
-            artifacts.tracePath = path;
-            attachFile("Playwright trace", "application/zip", ".zip", path);
+            artifacts.tracePath = path; // пригодится для локального анализа
+            attachFile("Playwright trace", "application/zip", ".zip", path); // выгружаем трейс в Allure
         });
 
         annotateFlakyIfNeeded(context);
@@ -144,8 +146,10 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
 
     private static final class Artifacts {
         private boolean failed;
-        private Path screenshotPath;
-        private Path tracePath;
+        @SuppressWarnings("unused")
+        private Path screenshotPath; // оставляем ссылку, если тесту нужно будет обработать файл вручную
+        @SuppressWarnings("unused")
+        private Path tracePath; // пригодится при отладке, если нужно будет прочитать путь из стора
     }
 
     private String sessionKey(ExtensionContext context) {

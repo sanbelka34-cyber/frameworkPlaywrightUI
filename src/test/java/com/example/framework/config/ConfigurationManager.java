@@ -34,7 +34,7 @@ public final class ConfigurationManager {
         Properties properties = new Properties();
         try (InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(CONFIG_RESOURCE)) {
             if (stream != null) {
-                properties.load(stream);
+                properties.load(stream); // читаем значения по умолчанию из файла ресурсов
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to load configuration from " + CONFIG_RESOURCE, e);
@@ -92,22 +92,22 @@ public final class ConfigurationManager {
     }
 
     private static String resolve(String key, Properties properties, String defaultValue) {
-        String system = System.getProperty(key);
+        String system = System.getProperty(key); // позволяет переопределять конфиг при запуске JVM
         if (isNotBlank(system)) {
             return system;
         }
 
-        String env = System.getenv(toEnvKey(key));
+        String env = System.getenv(toEnvKey(key)); // поддержка переменных окружения для CI/локальных запусков
         if (isNotBlank(env)) {
             return env;
         }
 
-        String dotenvValue = DOTENV.get(key);
+        String dotenvValue = DOTENV.get(key); // .env полезен для локальной разработки
         if (isNotBlank(dotenvValue)) {
             return dotenvValue;
         }
 
-        String property = properties.getProperty(key);
+        String property = properties.getProperty(key); // последнее звено — значение из properties-файла
         if (isNotBlank(property)) {
             return property;
         }

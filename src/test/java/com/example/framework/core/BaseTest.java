@@ -11,19 +11,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(PlaywrightExtension.class)
 public abstract class BaseTest {
 
-    private PlaywrightSession session;
+    private PlaywrightSession session; // хранит ссылку на сессию, чтобы потомки не думали о внедрении зависимостей
 
     @BeforeEach
     void captureSession(PlaywrightSession session) {
-        this.session = session;
+        this.session = session; // JUnit передаёт объект из расширения перед каждым тестом
     }
 
     protected PlaywrightSession session() {
-        return session;
+        return session; // удобный геттер для наследников
     }
 
     protected FrameworkConfig config() {
-        return session.config();
+        return session.config(); // доступ к настройкам без повторного вызова менеджера
     }
 }
 

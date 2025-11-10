@@ -4,6 +4,7 @@ import com.example.framework.config.FrameworkConfig;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import com.microsoft.playwright.options.WaitUntilState;
 import io.qameta.allure.Step;
 import org.junit.jupiter.api.Assertions;
 
@@ -18,21 +19,21 @@ public abstract class BasePage<T extends BasePage<T>> {
     protected final FrameworkConfig config;
 
     protected BasePage(Page page, FrameworkConfig config) {
-        this.page = page;
-        this.config = config;
+        this.page = page; // общий Playwright Page для действий страницы
+        this.config = config; // нужен для доступа к baseUrl и таймаутам
     }
 
     protected abstract T self();
 
     @Step("Open application base URL")
     public T openHome() {
-        page.navigate(config.baseUrl());
+        page.navigate(config.baseUrl(), new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
         return self();
     }
 
     @Step("Navigate to path: {path}")
     public T openPath(String path) {
-        page.navigate(config.baseUrl() + path);
+        page.navigate(config.baseUrl() + path); // даёт возможность работать с относительными путями
         return self();
     }
 
@@ -51,7 +52,7 @@ public abstract class BasePage<T extends BasePage<T>> {
     }
 
     protected Locator locator(String selector) {
-        return page.locator(selector);
+        return page.locator(selector); // базовый хелпер: все элементы ищем одинаково
     }
 }
 
