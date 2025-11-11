@@ -8,6 +8,8 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.BrowserType.LaunchOptions;
 import com.microsoft.playwright.Browser.NewContextOptions;
 import com.microsoft.playwright.Playwright;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 
@@ -16,11 +18,16 @@ import java.util.Locale;
  */
 public final class PlaywrightFactory {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PlaywrightFactory.class);
+
     private PlaywrightFactory() {
     }
 
     public static PlaywrightSession newSession(String testId) {
         FrameworkConfig config = ConfigurationManager.configuration(); // берём все параметры запуска тестов
+
+        LOG.info("Создаем Playwright-сессию {}: браузер={}, headless={}, задержка={} мс, таймаут={} мс",
+                testId, config.browser(), config.headless(), config.slowMo(), config.timeoutMs());
 
         FileSystemSupport.ensureDirectory(config.videoDir()); // гарантируем, что папка для видео существует
         FileSystemSupport.ensureDirectory(config.traceDir()); // то же для трейсов
@@ -32,6 +39,9 @@ public final class PlaywrightFactory {
                 .launch(new LaunchOptions()
                         .setHeadless(config.headless()) // управляем режимом headless через конфиг
                         .setSlowMo(config.slowMo())); // замедление действий удобно при отладке
+
+        LOG.info("Браузер для сессии {} запущен в режиме {} (замедление={} мс)", testId,
+                config.headless() ? "без интерфейса" : "с интерфейсом", config.slowMo());
 
         NewContextOptions contextOptions = new NewContextOptions()
                 .setBaseURL(config.baseUrl()) // чтобы `page.navigate()` мог использовать относительные пути
@@ -51,6 +61,9 @@ public final class PlaywrightFactory {
         contextPair.context.setDefaultTimeout(config.timeoutMs()); // единый таймаут для всех действий
         contextPair.page.setDefaultTimeout(config.timeoutMs());
 
+        LOG.info("Playwright-сессия {} инициализирована: baseUrl={}, видео включено={}, трейс включен={}",
+                testId, config.baseUrl(), config.videoEnabled(), config.traceEnabled());
+
         return new PlaywrightSession(
                 testId,
                 config,
@@ -63,6 +76,7 @@ public final class PlaywrightFactory {
 
     private static BrowserType selectBrowser(Playwright playwright, String browserName) {
         String normalized = browserName == null ? "" : browserName.trim().toLowerCase(Locale.ROOT);
+        LOG.info("Выбираем тип браузера: запрос='{}'", normalized.isBlank() ? "chromium (по умолчанию)" : normalized);
         return switch (normalized) {
             case "firefox" -> playwright.firefox(); // стандартное соответствие названию браузера
             case "webkit" -> playwright.webkit();

@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @Epic("UFC portal")
 @Feature("Search panel")
-@Execution(ExecutionMode.SAME_THREAD)
+@Execution(ExecutionMode.CONCURRENT)
 class UfcSearchTest extends BaseTest {
 
     @Test
@@ -28,15 +28,26 @@ class UfcSearchTest extends BaseTest {
     @Slow
     @DisplayName("Autocomplete supports selecting first and last results sequentially")
     @Story("Search suggestions list responds to user selection order")
-    void shouldSelectFirstAndLastSuggestion() {
+    void findTourneyAndTestFilter() {
         UfcHomePage ufcHomePage = new UfcHomePage(session().page(), config());
 
         UfcSearchPage searchPage = ufcHomePage.openSearchPanel()
                 .focusSearchInput()
                 .selectFirstSuggestion();
         searchPage.applyFilter();
+    }
+    @Test
+    @Regression
+    @Slow
+    @DisplayName("Autocomplete supports selecting first and last results sequentially")
+    @Story("Search suggestions list responds to user selection order")
+    void findReferenceAndFeeds() {
+        UfcHomePage ufcHomePage = new UfcHomePage(session().page(), config());
 
-
+        UfcSearchPage searchPage = ufcHomePage.openSearchPanel()
+                .focusSearchInput()
+                .selectFirstSuggestion();
+        searchPage.applyFilter();
     }
 }
 

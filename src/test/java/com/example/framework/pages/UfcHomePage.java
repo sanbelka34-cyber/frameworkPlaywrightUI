@@ -29,40 +29,55 @@ public class UfcHomePage extends BasePage<UfcHomePage> {
 
     @Step("Open UFC home page")
     public UfcHomePage open() {
-        page.navigate(UFC_HOME_URL, new NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)); // ждём, пока основное содержимое загрузится
-        return this;
+        return step("Open UFC home page", () -> {
+            log.info("Открываем главную страницу UFC {}", UFC_HOME_URL);
+            page.navigate(UFC_HOME_URL, new NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)); // ждём, пока основное содержимое загрузится
+            return this;
+        });
     }
 
     @Step("Toggle the search panel")
     public UfcHomePage openSearchPanel() {
-        page.click(SEARCH_TOGGLE); // раскрываем скрытую панель поиска
-        return this;
+        return step("Toggle the search panel", () -> {
+            log.info("Раскрываем панель поиска");
+            page.click(SEARCH_TOGGLE); // раскрываем скрытую панель поиска
+            return this;
+        });
     }
 
     @Step("Focus the search input")
     public UfcHomePage focusSearchInput() {
-        Locator input = page.locator(SEARCH_INPUT);
-        input.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE)); // дожидаемся появления поля
-        input.click(); // и ставим в него фокус
-        return this;
+        return step("Focus the search input", () -> {
+            log.info("Устанавливаем фокус на поле поиска {}", SEARCH_INPUT);
+            Locator input = page.locator(SEARCH_INPUT);
+            input.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE)); // дожидаемся появления поля
+            input.click(); // и ставим в него фокус
+            return this;
+        });
     }
 
     @Step("Select the first suggestion")
     public UfcSearchPage selectFirstSuggestion() {
-        waitForSuggestions();
-        Locator first = suggestions().first(); // Playwright возвращает все подходящие элементы
-        first.click();
-        page.waitForTimeout(1000); // даём сайту время обновить результаты
-        return new UfcSearchPage(page, config);
+        return stepResult("Select the first suggestion", () -> {
+            waitForSuggestions();
+            Locator first = suggestions().first(); // Playwright возвращает все подходящие элементы
+            log.info("Выбираем первую подсказку из {}", SUGGESTION_ITEMS);
+            first.click();
+            page.waitForTimeout(1000); // даём сайту время обновить результаты
+            return new UfcSearchPage(page, config);
+        });
     }
 
     @Step("Select the last suggestion")
     public UfcHomePage selectLastSuggestion() {
-        waitForSuggestions();
-        Locator last = suggestions().last(); // выбираем другой элемент, чтобы убедиться, что список реагирует
-        last.click();
-        page.waitForTimeout(1000);
-        return this;
+        return step("Select the last suggestion", () -> {
+            waitForSuggestions();
+            Locator last = suggestions().last(); // выбираем другой элемент, чтобы убедиться, что список реагирует
+            log.info("Выбираем последнюю подсказку из {}", SUGGESTION_ITEMS);
+            last.click();
+            page.waitForTimeout(1000);
+            return this;
+        });
     }
 
     private void waitForSuggestions() {

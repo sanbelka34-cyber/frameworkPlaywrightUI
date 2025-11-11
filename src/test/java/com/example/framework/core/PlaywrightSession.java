@@ -8,6 +8,8 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Tracing;
 import com.microsoft.playwright.Video;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -19,6 +21,8 @@ import java.util.Optional;
  * Represents an isolated Playwright session for a single test execution.
  */
 public final class PlaywrightSession implements AutoCloseable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PlaywrightSession.class);
 
     private final String testId;
     private final FrameworkConfig config;
@@ -60,32 +64,41 @@ public final class PlaywrightSession implements AutoCloseable {
 
     public void startTracingIfEnabled() {
         if (config.traceEnabled() && !tracingStarted) {
+            LOG.info("Запускаем Playwright-трейс для {}", testId);
             context.tracing().start(new Tracing.StartOptions()
                     .setSnapshots(true)
                     .setSources(true)
                     .setScreenshots(true));
             tracingStarted = true;
+        } else {
+            LOG.info("Трейс для {} не запущен (включен={} ужеНачат={})", testId, config.traceEnabled(), tracingStarted);
         }
     }
 
     public Optional<Path> exportTraceIfEnabled() {
         if (!config.traceEnabled() || !tracingStarted) {
+            LOG.info("Экспорт трейса для {} пропущен (включен={} ужеНачат={})", testId, config.traceEnabled(), tracingStarted);
             return Optional.empty();
         }
         Path tracePath = FileSystemSupport.buildArtifactPath(config.traceDir(), testId + "-trace-" + Instant.now().toEpochMilli(), ".zip"); // имя файла завязано на тест
         context.tracing().stop(new Tracing.StopOptions().setPath(tracePath));
         tracingStarted = false;
+        LOG.info("Трейс для {} сохранен в {}", testId, tracePath);
         return Optional.of(tracePath);
     }
 
     public void stopTracingSilently() {
         if (tracingStarted) {
+            LOG.info("Останавливаем трейс для {} без экспорта", testId);
             context.tracing().stop();
             tracingStarted = false;
+        } else {
+            LOG.info("Трейс для {} уже остановлен", testId);
         }
     }
 
     public byte[] captureScreenshot() {
+        LOG.info("Делаем скриншот для {}", testId);
         return page.screenshot(new Page.ScreenshotOptions().setFullPage(true)); // fullPage удобно для аналитики багов
     }
 
@@ -100,6 +113,7 @@ public final class PlaywrightSession implements AutoCloseable {
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to store screenshot to " + target, e);
         }
+        LOG.info("Скриншот для {} сохранен в {}", testId, target);
         return target;
     }
 
@@ -108,6 +122,7 @@ public final class PlaywrightSession implements AutoCloseable {
         page.close(); // закрываем вкладку перед сбором артефактов
         if (video != null && config.videoEnabled()) {
             if (!persist) {
+                LOG.info("Видео для {} удалено по запросу", testId);
                 video.delete();
                 return Optional.empty();
             }
@@ -118,13 +133,17 @@ public final class PlaywrightSession implements AutoCloseable {
             );
             video.saveAs(target);
             video.delete();
+            LOG.info("Видео для {} сохранено в {}", testId, target);
             return Optional.of(target);
         }
+        LOG.info("Видео для {} отсутствует (видеоВключено={}, видеоПолучено={})",
+                testId, config.videoEnabled(), video != null);
         return Optional.empty();
     }
 
     @Override
     public void close() {
+        LOG.info("Закрываем Playwright-сессию {}", testId);
         try {
             context.close();
         } finally {
@@ -132,6 +151,7 @@ public final class PlaywrightSession implements AutoCloseable {
                 browser.close();
             } finally {
                 playwright.close();
+                LOG.info("Playwright-сессия {} закрыта", testId);
             }
         }
     }

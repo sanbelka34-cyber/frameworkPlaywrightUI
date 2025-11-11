@@ -5,6 +5,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Page.NavigateOptions;
 import com.microsoft.playwright.options.WaitUntilState;
+import io.qameta.allure.Allure;
 import io.qameta.allure.Step;
 import org.junit.jupiter.api.Assertions;
 
@@ -18,8 +19,6 @@ public class UfcSearchPage extends BasePage<UfcSearchPage> {
 
     public static final String FILTER_OLDNEW_TOURNEY = "#yxt-SortOptions-option_SortOptions_2";
     public static final String FILTER_APPLY = "button.yxt-SortOptions-apply:has-text('Применить')";
-    public static final String SECTION = "a.yxt-Nav-item";
-    public static final String FRAME = "iframe#answers-frame"; // Локатор iframe с встраиваемым HTML
 
     public UfcSearchPage(Page page, FrameworkConfig config) {
         super(page, config);
@@ -32,52 +31,65 @@ public class UfcSearchPage extends BasePage<UfcSearchPage> {
 
     @Step("Apply tournaments filter from embedded search card")
     public UfcSearchPage applyFilter() {
+        return Allure.step("Apply tournaments filter from embedded search card", () -> {
+            Allure.step("Открываем вкладку 'Турниры'", () -> {
+                log.info("Открываем вкладку 'Турниры' внутри встроенной карты поиска");
+                page.frameLocator("#answers-frame")
+                        .locator("a.yxt-Nav-item:has-text('ТУРНИРЫ')")
+                        .click();
+            });
 
-        page.frameLocator("#answers-frame")
-                .locator("a.yxt-Nav-item:has-text('ТУРНИРЫ')")
-                .click();
+            String iframeSrc = page.locator("#answers-frame").getAttribute("src");
+            if (iframeSrc == null || iframeSrc.isBlank()) {
+                throw new IllegalStateException("Iframe src attribute is not available for locator: #answers-frame");
+            }
 
-        String iframeSrc = page.locator("#answers-frame").getAttribute("src");
-        if (iframeSrc == null || iframeSrc.isBlank()) {
-            throw new IllegalStateException("Iframe src attribute is not available for locator: #answers-frame");
-        }
+            Allure.step("Переходим во встроенный iframe", () -> {
+                log.info("Переходим по адресу iframe {}", iframeSrc);
+                page.navigate(iframeSrc, new NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+            });
 
-        page.navigate(iframeSrc, new NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
-        page.click(FILTER_OLDNEW_TOURNEY);
-        page.click(FILTER_APPLY);
+            Allure.step("Выбираем и применяем сортировку турниров", () -> {
+                log.info("Выбираем сортировку турниров {}", FILTER_OLDNEW_TOURNEY);
+                page.click(FILTER_OLDNEW_TOURNEY);
+                log.info("Подтверждаем фильтр кнопкой {}", FILTER_APPLY);
+                page.click(FILTER_APPLY);
+            });
 
-
-        checkFilter();
-        return this;
+            checkFilter();
+            return this;
+        });
     }
 
     private void checkFilter() {
-        Locator dateContainers = page.locator("div.HitchhikerEventStandard-dateInnerWrapper");
-        dateContainers.first().waitFor();
+        Allure.step("Проверяем сортировку дат на карточках турниров", () -> {
+            Locator dateContainers = page.locator("div.HitchhikerEventStandard-dateInnerWrapper");
+            dateContainers.first().waitFor();
 
-        int count = dateContainers.count();
-        if (count == 0) {
-            throw new IllegalStateException("Не удалось найти элементы с датами для проверки сортировки");
-        }
+            int count = dateContainers.count();
+            if (count == 0) {
+                throw new IllegalStateException("Не удалось найти элементы с датами для проверки сортировки");
+            }
 
-        List<LocalDate> collectedDates = new ArrayList<>(count);
+            log.info("Найдено {} контейнеров с датами для проверки сортировки", count);
+            List<LocalDate> collectedDates = new ArrayList<>(count);
 
-        for (int i = 0; i < count; i++) {
-            Locator container = dateContainers.nth(i);
+            for (int i = 0; i < count; i++) {
+                Locator container = dateContainers.nth(i);
 
-            String day = container.locator("span.HitchhikerEventStandard-day").innerText().trim();
-            String month = container.locator("span.HitchhikerEventStandard-month").innerText().trim();
-            String year = container.locator("span.HitchhikerEventStandard-year").innerText().trim();
+                String day = container.locator("span.HitchhikerEventStandard-day").innerText().trim();
+                String month = container.locator("span.HitchhikerEventStandard-month").innerText().trim();
+                String year = container.locator("span.HitchhikerEventStandard-year").innerText().trim();
 
-            System.out.println(year);
-            collectedDates.add(parseRussianDate(day, month, year));
-        }
+                collectedDates.add(parseRussianDate(day, month, year));
+            }
 
+            List<LocalDate> sorted = new ArrayList<>(collectedDates);
+            sorted.sort(Comparator.naturalOrder());
 
-        List<LocalDate> sorted = new ArrayList<>(collectedDates);
-        sorted.sort(Comparator.naturalOrder());
-
-        Assertions.assertEquals(sorted, collectedDates, "Ожидалось, что даты будут отсортированы от старой к новой");
+            log.info("Проверяем, что даты отсортированы по возрастанию");
+            Assertions.assertEquals(sorted, collectedDates, "Ожидалось, что даты будут отсортированы от старой к новой");
+        });
     }
 
     private LocalDate parseRussianDate(String dayText, String monthText, String yearText) {

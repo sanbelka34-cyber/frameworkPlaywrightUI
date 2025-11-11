@@ -73,9 +73,6 @@
                     <properties>
                         <configurationParameters>junit.jupiter.extensions.autodetection.enabled=true,junit.jupiter.execution.parallel.enabled=true,junit.jupiter.execution.parallel.mode.default=concurrent,junit.jupiter.execution.parallel.mode.classes.default=concurrent</configurationParameters>
                     </properties>
-                    <systemPropertyVariables>
-                        <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
-                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>

@@ -20,6 +20,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JUnit 5 extension that manages Playwright lifecycle and Allure attachments.
@@ -27,9 +29,11 @@ import java.util.Optional;
 public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver, TestWatcher {
 
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(PlaywrightExtension.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PlaywrightExtension.class);
     @Override
     public void beforeEach(ExtensionContext context) {
         String testId = FileSystemSupport.sanitizeFileName(context.getUniqueId()); // создаём аккуратный идентификатор, чтобы назвать файлы
+        LOG.info("Готовим Playwright-сессию для {}", context.getDisplayName());
         PlaywrightSession session = PlaywrightFactory.newSession(testId); // одна сессия на тест
         session.startTracingIfEnabled(); // сразу включаем трейс, если это разрешено конфигом
         context.getStore(NAMESPACE).put(sessionKey(context), session); // кладём сессию в стор, чтобы доставать позже
@@ -37,6 +41,7 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
 
         // Automatically navigate to base URL to make tests more declarative.
         session.page().navigate(session.config().baseUrl(), new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)); // заранее открываем базовый адрес, чтобы тесты были лаконичнее
+        LOG.info("Начальная навигация завершена для {}", context.getDisplayName());
     }
 
     @Override
@@ -46,11 +51,15 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
             return;
         }
 
+        LOG.info("Завершаем Playwright-сессию для {}", context.getDisplayName());
         Artifacts artifacts = getArtifacts(context);
         Optional<Path> videoPath = session.closeAndCollectVideo(artifacts.failed, artifacts.failed ? "failure" : "success"); // при успехе видео можно удалять
 
         if (artifacts.failed) {
+            LOG.info("Тест {} завершился с ошибкой — видео сохранено: {}", context.getDisplayName(), videoPath.isPresent());
             videoPath.ifPresent(path -> attachFile("Failure video", "video/webm", ".webm", path)); // прикладываем видео только когда упало
+        } else {
+            LOG.info("Тест {} прошёл успешно — видео удалено: {}", context.getDisplayName(), videoPath.isEmpty());
         }
 
         session.close(); // закрываем контекст, браузер и Playwright
@@ -87,6 +96,7 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
         PlaywrightSession session = getSession(context);
         if (session != null) {
             session.stopTracingSilently();
+            LOG.info("Тест {} завершён успешно", context.getDisplayName());
         }
     }
 
@@ -97,6 +107,7 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
         if (session != null) {
             session.stopTracingSilently();
         }
+        LOG.warn("Тест {} прерван: {}", context.getDisplayName(), cause == null ? "причина не указана" : cause.getMessage());
     }
 
     @Override
@@ -105,6 +116,7 @@ public class PlaywrightExtension implements BeforeEachCallback, AfterEachCallbac
         if (session == null) {
             return;
         }
+        LOG.error("Тест {} упал: {}", context.getDisplayName(), cause == null ? "причина отсутствует" : cause.getMessage(), cause);
         Artifacts artifacts = getArtifacts(context);
         artifacts.failed = true; // позже afterEach поймёт, что надо сохранять видео
 

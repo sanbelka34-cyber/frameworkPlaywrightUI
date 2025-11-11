@@ -1,6 +1,8 @@
 package com.example.framework.config;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +18,7 @@ import java.util.Properties;
 public final class ConfigurationManager {
 
     private static final String CONFIG_RESOURCE = "config/framework.properties";
+    private static final Logger LOG = LoggerFactory.getLogger(ConfigurationManager.class);
     private static final Dotenv DOTENV = Dotenv.configure()
             .ignoreIfMalformed()
             .ignoreIfMissing()
@@ -53,7 +56,7 @@ public final class ConfigurationManager {
         Path downloadsDir = resolvePath(ConfigKeys.DOWNLOADS_FOLDER, properties, "target/downloads");
         int parallelism = resolveInteger(ConfigKeys.PARALLELISM, properties, Runtime.getRuntime().availableProcessors());
 
-        return new FrameworkConfig(
+        FrameworkConfig frameworkConfig = new FrameworkConfig(
                 baseUrl,
                 browser,
                 headless,
@@ -67,6 +70,22 @@ public final class ConfigurationManager {
                 downloadsDir,
                 parallelism
         );
+
+        LOG.info("Конфигурация загружена: baseUrl={}, браузер={}, headless={}, задержка={} мс, таймаут={} мс, видео включено={}, трейс включен={}, параллелизм={}, директории артефактов [скриншоты={}, видео={}, трейсы={}, загрузки={}]",
+                baseUrl,
+                browser,
+                headless,
+                slowMo,
+                timeout,
+                videoEnabled,
+                traceEnabled,
+                parallelism,
+                screenshotsDir,
+                videoDir,
+                traceDir,
+                downloadsDir);
+
+        return frameworkConfig;
     }
 
     private static String resolveString(String key, Properties properties, String defaultValue) {
